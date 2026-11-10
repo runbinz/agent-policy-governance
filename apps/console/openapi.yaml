@@ -1,0 +1,2245 @@
+openapi: 3.1.0
+info:
+  title: Agent Policy Layer API
+  version: 0.1.0
+  description: |
+    Implemented HTTP routes for the local refund workflow. Bearer credentials are
+    authenticated independently for workload and reviewer operations. The API
+    resolves identity and grants from persisted records; request fields cannot
+    change tenant, environment, or authority.
+paths:
+  /v1/controls/state:
+    get:
+      operationId: getDispatchControlState
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - tenant
+              - connection
+              - workload
+        - name: id
+          in: query
+          description: Required for connection/workload; forbidden for tenant
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Authorized current control state; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlState'
+        '400':
+          description: Invalid scope/revision; expected_revision mandatory for writes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Control revision conflict
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/admin/entities:
+    get:
+      operationId: getAdminEntities
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/AdminEntityKind'
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Authorized fixed projection; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEntityPage'
+        '400':
+          description: Invalid request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict or missing scoped target
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/admin/grants:
+    get:
+      operationId: getAdminGrants
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/AdminGrantKind'
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 1024
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Authorized fixed projection; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminGrantPage'
+        '400':
+          description: Invalid request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict or missing scoped target
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/admin/entities/{kind}/{id}/enabled:
+    post:
+      operationId: setAdminEntityEnabled
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/AdminEntityKind'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminEnabledInput'
+      responses:
+        '200':
+          description: Authorized fixed projection; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRevisionResult'
+        '400':
+          description: Invalid request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict or missing scoped target
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/admin/grants/revoke:
+    post:
+      operationId: revokeAdminGrant
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRevokeInput'
+      responses:
+        '200':
+          description: Authorized fixed projection; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRevisionResult'
+        '400':
+          description: Invalid request
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Revision conflict or missing scoped target
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/policies:
+    get:
+      operationId: getPolicyPage
+      description: >-
+        Authorized immutable policy versions with separately returned active policy. Read access requires edit
+        or publish policy authority.
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: connection_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: after
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: No-store policy page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyPage'
+        '400':
+          description: Invalid filters
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+  /v1/reviewer/actions/{id}:
+    get:
+      operationId: getReviewerActionDetail
+      description: >-
+        Reviewer-only fixed projection. Requires independent action_detail_grants. Hidden and unauthorized
+        records return identical404. No provider reads or state mutations.
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: connection_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Bounded no-store reviewer detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionDetail'
+        '400':
+          description: Invalid path or query
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Temporarily unavailable
+  /v1/reviewer/actions/{id}/history:
+    get:
+      operationId: getReviewerActionHistory
+      description: >-
+        Reviewer-only fixed projection. Requires independent action_detail_grants. Hidden and unauthorized
+        records return identical404. No provider reads or state mutations.
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: connection_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: kind
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/DetailHistoryKind'
+        - name: after
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 1024
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Bounded no-store reviewer detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionHistoryPage'
+        '400':
+          description: Invalid path or query
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Temporarily unavailable
+  /auth/config:
+    get:
+      operationId: getBrowserAuthConfig
+      security: []
+      responses:
+        '200':
+          description: Enabled sign-in methods; development tokens are disabled in managed mode
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthConfig' }
+  /auth/login:
+    post:
+      operationId: startBrowserLogin
+      description: Same-origin browser navigation. Requires the configured Origin; issues a Secure HttpOnly binding cookie and redirects to the fixed identity provider using state, nonce and S256 PKCE. No user-selected redirect.
+      security: []
+      responses:
+        '303': { description: Navigate to the configured authorization endpoint }
+        '403': { description: Origin or host rejected }
+        '429': { description: Login capacity exhausted }
+        '503': { description: Login temporarily unavailable }
+  /auth/callback:
+    get:
+      operationId: finishBrowserLogin
+      description: One-use, browser-bound OIDC callback. An authenticated registered reviewer receives an opaque Secure HttpOnly session cookie; provider tokens are never returned to the browser.
+      security: []
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: code, in: query, schema: { type: string } }
+        - { name: error, in: query, schema: { type: string } }
+        - { name: iss, in: query, schema: { type: string } }
+      responses:
+        '303': { description: Login complete; navigate to the fixed console root }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { description: Login temporarily unavailable }
+  /auth/session:
+    get:
+      operationId: getBrowserSession
+      security: [{ browserSession: [] }]
+      responses:
+        '200':
+          description: Current session metadata and CSRF token; never cache or persist this response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BrowserSessionInfo' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { description: Login temporarily unavailable }
+  /auth/logout:
+    post:
+      operationId: logoutBrowserSession
+      description: Requires same-origin Origin and X-CSRF-Token. Revokes the shared session and clears browser cookies.
+      security: [{ browserSession: [] }]
+      parameters:
+        - { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Session revoked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Origin or CSRF token rejected }
+        '503': { description: Login temporarily unavailable }
+  /health/live:
+    get:
+      operationId: getLiveness
+      summary: Check that the API is serving requests
+      security: []
+      responses:
+        '200':
+          description: API is live
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+  /health/ready:
+    get:
+      operationId: getReadiness
+      summary: Check that the API can reach PostgreSQL
+      security: []
+      responses:
+        '200':
+          description: Database check passed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        '503':
+          description: Database check failed (`unavailable`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+  /v1/actions:
+    post:
+      operationId: submitAction
+      summary: Submit a refund for asynchronous evaluation
+      security: [{ workloadBearer: [] }]
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description: One visible ASCII value, reused for retries of the same request within the workload scope.
+          schema: { type: string, minLength: 1, maxLength: 128, pattern: '^[!-~]+$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefundRequest' }
+      responses:
+        '202':
+          description: Durable submission accepted or replayed; acceptance does not authorize execution.
+          headers:
+            Location:
+              required: true
+              description: Relative URL for reading the action.
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubmittedAction' }
+        '400':
+          description: Invalid request or idempotency header (`invalid_request`, `invalid_idempotency_key`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The idempotency key already refers to a different request (`idempotency_conflict`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/actions/{id}:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    get:
+      operationId: getAction
+      summary: Read an action in the workload's grant scope
+      security: [{ workloadBearer: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Action' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/actions/{id}/events:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    get:
+      operationId: listActionEvents
+      summary: List audit events for an action in the workload's grant scope
+      security: [{ workloadBearer: [] }]
+      responses:
+        '200':
+          description: Action events in sequence order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AuditEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/actions/{id}/cancel:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    post:
+      operationId: cancelAction
+      summary: Cancel an action before dispatch authorization
+      security: [{ workloadBearer: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Action' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The action can no longer be cancelled (`action_not_cancellable`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/actions/{id}/reconcile:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    get:
+      operationId: getReconciliationState
+      summary: Preview independently authorized evidence collection
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      responses:
+        '200':
+          description: Current minimal reconciliation eligibility; no mutation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReconciliationState' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { description: Unavailable }
+    post:
+      operationId: requestActionReconciliation
+      summary: Request a provider read for a refund held in manual review
+      description: Requires a separate connection-scoped reconciliation grant. Does not retry a refund or release a budget hold.
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      responses:
+        '202': { description: Provider check queued or already queued }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Action is not in manual review }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/approvals:
+    get:
+      operationId: listApprovals
+      summary: List pending approvals in the reviewer's grant scope
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      responses:
+        '200':
+          description: Active and undecided approval items, ordered by expiry then action ID.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Approval' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/approvals/{id}/decision:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    post:
+      operationId: decideApproval
+      summary: Approve or reject the exact pending action generation
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Action' }
+        '400':
+          description: Invalid decision request body (`invalid_request`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The approval is stale, expired, already decided, or no longer actionable (`approval_conflict`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/policies/drafts:
+    post:
+      operationId: createPolicyDraft
+      summary: Create an immutable policy version
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PolicyDraftInput' }
+      responses:
+        '201': { description: Draft created }
+        '400': { description: Invalid policy }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Version already exists }
+        '413': { description: Request body too large }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/policies/{version}/simulate:
+    parameters: [{ $ref: '#/components/parameters/PolicyVersion' }]
+    post:
+      operationId: simulatePolicy
+      summary: Compare active and draft policy on synthetic refund requests
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [connection_id, requests]
+              properties:
+                connection_id: { type: string, format: uuid }
+                requests:
+                  type: array
+                  minItems: 1
+                  maxItems: 25
+                  items: { $ref: '#/components/schemas/RefundRequest' }
+      responses:
+        '200':
+          description: Decisions in fixture order; no execution or budget changes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active_version, draft_version, results]
+                properties:
+                  active_version: { type: [integer, 'null'], format: int64 }
+                  draft_version: { type: integer, format: int64 }
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      required: [old, new]
+                      properties:
+                        old: { $ref: '#/components/schemas/SimulatedDecision' }
+                        new: { $ref: '#/components/schemas/SimulatedDecision' }
+        '400': { description: Invalid fixtures }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { description: Request body too large }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/policies/{version}/publish:
+    parameters: [{ $ref: '#/components/parameters/PolicyVersion' }]
+    post:
+      operationId: publishPolicy
+      summary: Publish an existing policy version with compare-and-set
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [connection_id, expected_version]
+              properties:
+                connection_id: { type: string, format: uuid }
+                expected_version: { type: integer, format: int64, minimum: 0, description: Zero means no active policy. }
+      responses:
+        '204': { description: Policy published }
+        '400': { description: Invalid publication request }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Stale active version or non-monotonic publication }
+        '413': { description: Request body too large }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/controls/pause:
+    post:
+      operationId: pauseDispatch
+      summary: Pause dispatch for one connection, workload, or tenant
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchControlInput'
+      responses:
+        '200':
+          description: Authorized current control state; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlState'
+        '400':
+          description: Invalid scope/revision; expected_revision mandatory for writes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Control revision conflict
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+      description: >-
+        Prelaunch revisioned contract: expected_revision from an authorized state read is mandatory. Stale
+        confirmations conflict; pausing is not cancellation or proof of non-execution.
+  /v1/controls/resume:
+    post:
+      operationId: resumeDispatch
+      summary: Resume dispatch for one connection, workload, or tenant
+      security:
+        - reviewerBearer: []
+        - browserSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchControlInput'
+      responses:
+        '200':
+          description: Authorized current control state; private no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ControlState'
+        '400':
+          description: Invalid scope/revision; expected_revision mandatory for writes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Control revision conflict
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          description: Unavailable
+      description: >-
+        Prelaunch revisioned contract: expected_revision from an authorized state read is mandatory. Stale
+        confirmations conflict; pausing is not cancellation or proof of non-execution.
+  /v1/operations:
+    get:
+      operationId: getOperationsSnapshot
+      summary: Read operational state for one explicitly granted connection
+      description: Independent operations grant required. Snapshot values are scoped and redacted; unknown historical ages remain null. No execution/control mutation.
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      parameters:
+        - { name: connection_id, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Consistent current operational snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperationsSnapshot' }
+        '400': { description: Invalid query }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/operations/items:
+    get:
+      operationId: getRecoveryItems
+      summary: Read scoped unresolved dispatches or currently due jobs
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      parameters:
+        - { name: connection_id, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: kind, in: query, required: true, schema: { type: string, enum: [dispatches, ready_jobs] } }
+        - { name: after, in: query, schema: { type: string, maxLength: 1024 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: Redacted UUID ordered page; cursor bound to scope and kind
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RecoveryPage' }
+        '400': { description: Invalid filter or cursor }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+        '503': { description: Unavailable }
+  /metrics:
+    get:
+      operationId: getProcessMetrics
+      summary: Private process HTTP counters and latency histograms
+      description: Disabled without metrics configuration. Dedicated scraper bearer secret; keep off public ingress. No tenant/action/path-value labels.
+      security: [{ metricsBearer: [] }]
+      responses:
+        '200':
+          description: Prometheus text exposition
+          content:
+            text/plain:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /v1/evidence:
+    get:
+      operationId: searchEvidence
+      summary: Search redacted action evidence on an authorized connection
+      description: Requires a current connection-scoped evidence grant. UUID ordering is stable pagination, not chronology. Filters never search raw metadata or payment references.
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      parameters:
+        - { name: connection_id, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ActionStatus' } }
+        - { name: workload_id, in: query, schema: { type: string, format: uuid } }
+        - { name: action_id, in: query, schema: { type: string, format: uuid } }
+        - { name: min_amount_minor, in: query, schema: { type: integer, minimum: 0, maximum: 50000 } }
+        - { name: max_amount_minor, in: query, schema: { type: integer, minimum: 0, maximum: 50000 } }
+        - { name: after, in: query, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses:
+        '200':
+          description: Redacted page; next_after is null when exhausted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidencePage' }
+        '400': { description: Invalid or unknown query parameter }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/exports:
+    post:
+      operationId: requestEvidenceExport
+      summary: Queue an encrypted connection-scoped evidence snapshot
+      description: Requires an explicit evidence export grant, separate from approval authority.
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [connection_id, action_ids]
+              properties:
+                connection_id: { type: string, format: uuid }
+                action_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+      responses:
+        '202':
+          description: Snapshot queued; status does not imply artifact is available
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidenceExport' }
+        '400': { description: Invalid export selection }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '413': { description: Selection exceeds request body limit }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/exports/{id}:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    get:
+      operationId: getEvidenceExport
+      summary: Inspect an owned export with the current auditor grant
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      responses:
+        '200':
+          description: Export state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EvidenceExport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/exports/{id}/download:
+    parameters: [{ $ref: '#/components/parameters/ActionId' }]
+    get:
+      operationId: downloadEvidenceExport
+      summary: Download a ready unexpired redacted snapshot
+      security: [{ reviewerBearer: [] }, { browserSession: [] }]
+      responses:
+        '200':
+          description: JSON attachment; private and not cacheable
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: Export is not ready }
+        '503': { description: Artifact could not be verified or read }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /v1/webhooks/stripe-sandbox:
+    post:
+      operationId: ingestStripeSandboxWebhook
+      summary: Authenticate and record a Stripe sandbox reconciliation hint
+      description: Available when a direct sandbox webhook endpoint is configured. Delivery is deduplicated and never settles a refund.
+      security:
+        - StripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '204': { description: Accepted, ignored event type, or duplicate }
+        '400': { description: Invalid signature or event }
+        '404': { description: Webhook endpoint is not configured }
+        '413': { description: Request body exceeds the configured limit }
+        '503': { description: Inbox unavailable; retry delivery }
+components:
+  securitySchemes:
+    metricsBearer:
+      type: http
+      scheme: bearer
+      description: Separate private scrape credential, not an end-user/workload credential.
+    browserSession:
+      type: apiKey
+      in: cookie
+      name: __Host-apl_session
+      description: Opaque Secure HttpOnly session. Cookie-authenticated mutations require the configured Origin and X-CSRF-Token from GET /auth/session. Never mix with bearer credentials.
+    StripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: Timestamped signature over the exact request bytes.
+    workloadBearer:
+      type: http
+      scheme: bearer
+      description: Local workload fixture or configured workload JWT audience. Persisted workload grants and action scope constrain each operation.
+    reviewerBearer:
+      type: http
+      scheme: bearer
+      description: Separately enabled reviewer fixture or configured reviewer JWT audience. Persisted reviewer grants constrain queue visibility and decision authority. A credential valid for both roles is rejected.
+  parameters:
+    PolicyVersion:
+      name: version
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    ActionId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    Action:
+      description: Current action state.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Action' }
+    Unauthorized:
+      description: Missing, invalid, unmapped or disabled credential (`unauthorized`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotFound:
+      description: Resource does not exist or is outside the caller's grant scope (`not_found`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    TooLarge:
+      description: JSON body exceeds 16 KiB (`invalid_request`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    InternalError:
+      description: Internal API or database failure (`internal_error`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+  schemas:
+    RecoveryPage:
+      type: object
+      additionalProperties: false
+      required: [connection_id, kind, items, next_cursor]
+      properties:
+        connection_id: { type: string, format: uuid }
+        kind: { type: string, enum: [dispatches, ready_jobs] }
+        items: { type: array, maxItems: 100, items: { $ref: '#/components/schemas/RecoveryItem' } }
+        next_cursor: { type: [string, 'null'], maxLength: 1024 }
+    RecoveryItem:
+      type: object
+      additionalProperties: false
+      required: [action_id, workload_id, action_status, dispatch_state, queue_due_at, queue_lag_seconds, state_changed_at, lease_expired, hold_state, held_minor, can_reconcile]
+      properties:
+        action_id: { type: string, format: uuid }
+        workload_id: { type: string, format: uuid }
+        action_status: { type: string, enum: [received, denied, pending_approval, ready, rejected, expired, cancelled, dispatching, failed_confirmed, succeeded] }
+        dispatch_state: { type: [string, 'null'], enum: [authorized, in_flight, pending, unknown, manual_review, succeeded, failed_confirmed, null] }
+        queue_due_at: { type: [string, 'null'], format: date-time }
+        queue_lag_seconds: { type: [integer, 'null'], minimum: 0, maximum: 9007199254740991 }
+        state_changed_at: { type: [string, 'null'], format: date-time }
+        lease_expired: { type: [boolean, 'null'] }
+        hold_state: { type: [string, 'null'], enum: [held, settled, released, null] }
+        held_minor: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        can_reconcile: { type: boolean }
+    ReconciliationState:
+      type: object
+      additionalProperties: false
+      required: [action_id, connection_id, dispatch_state, can_request, reason_code]
+      properties:
+        action_id: { type: string, format: uuid }
+        connection_id: { type: string, format: uuid }
+        dispatch_state: { type: [string, 'null'], enum: [authorized, in_flight, pending, unknown, manual_review, succeeded, failed_confirmed, null] }
+        can_request: { type: boolean }
+        reason_code: { type: string, enum: [ELIGIBLE, NOT_MANUAL_REVIEW, ALREADY_QUEUED, NO_DISPATCH] }
+    OperationsSnapshot:
+      type: object
+      additionalProperties: false
+      required: [connection_id, sampled_at_unix, workloads_paused, pending_approvals, held_minor, committed_today_minor, daily_used_minor, unknown_outcomes, pending_provider, manual_review, ready_jobs, failed_notifications, queued_notifications, failed_exports, unknown_age_records, oldest_approval_age_seconds, daily_limit_minor, exposure_limit_minor, oldest_unresolved_age_seconds, oldest_ready_lag_seconds, tenant_paused, connection_paused]
+      properties:
+        connection_id: { type: string, format: uuid }
+        sampled_at_unix: { type: integer, format: int64 }
+        workloads_paused: { type: integer, format: int64 }
+        pending_approvals: { type: integer, format: int64 }
+        held_minor: { type: integer, format: int64 }
+        committed_today_minor: { type: integer, format: int64 }
+        daily_used_minor: { type: integer, format: int64 }
+        unknown_outcomes: { type: integer, format: int64 }
+        pending_provider: { type: integer, format: int64 }
+        manual_review: { type: integer, format: int64 }
+        ready_jobs: { type: integer, format: int64 }
+        failed_notifications: { type: integer, format: int64 }
+        queued_notifications: { type: integer, format: int64 }
+        failed_exports: { type: integer, format: int64 }
+        unknown_age_records: { type: integer, format: int64 }
+        oldest_approval_age_seconds: { type: [integer, 'null'], format: int64 }
+        daily_limit_minor: { type: [integer, 'null'], format: int64 }
+        exposure_limit_minor: { type: [integer, 'null'], format: int64 }
+        oldest_unresolved_age_seconds: { type: [integer, 'null'], format: int64 }
+        oldest_ready_lag_seconds: { type: [integer, 'null'], format: int64 }
+        tenant_paused: { type: boolean }
+        connection_paused: { type: boolean }
+    AuthConfig:
+      type: object
+      additionalProperties: false
+      required: [managed_login, development_tokens]
+      properties:
+        managed_login: { type: boolean }
+        development_tokens: { type: boolean }
+    BrowserSessionInfo:
+      type: object
+      additionalProperties: false
+      required: [authenticated, csrf_token, expires_at]
+      properties:
+        authenticated: { type: boolean, const: true }
+        csrf_token: { type: string, minLength: 43, maxLength: 43 }
+        expires_at: { type: integer, format: int64, description: Absolute expiry in Unix seconds }
+    EvidencePage:
+      type: object
+      additionalProperties: false
+      required: [items, next_after]
+      properties:
+        items: { type: array, maxItems: 100, items: { $ref: '#/components/schemas/EvidenceAction' } }
+        next_after: { type: [string, 'null'], format: uuid }
+    EvidenceAction:
+      type: object
+      additionalProperties: false
+      required: [id, workload_id, connection_id, status, reason, amount_minor, currency, policy_version, budget_state, budget_amount_minor]
+      properties:
+        id: { type: string, format: uuid }
+        workload_id: { type: string, format: uuid }
+        connection_id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ActionStatus' }
+        reason: { type: [string, 'null'] }
+        amount_minor: { type: integer, format: int64 }
+        currency: { type: string, const: USD }
+        policy_version: { type: [integer, 'null'], format: int64 }
+        budget_state: { type: [string, 'null'] }
+        budget_amount_minor: { type: [integer, 'null'], format: int64 }
+    EvidenceExport:
+      type: object
+      required: [id, connection_id, status, expires_at, error_code]
+      properties:
+        id: { type: string, format: uuid }
+        connection_id: { type: string, format: uuid }
+        status: { type: string, enum: [queued, processing, ready, failed] }
+        expires_at: { type: string, format: date-time }
+        error_code: { type: [string, 'null'] }
+    PolicyDraftInput:
+      type: object
+      additionalProperties: false
+      required: [connection_id, version, auto_limit_minor, hard_limit_minor, approval_ttl_seconds]
+      properties:
+        connection_id: { type: string, format: uuid }
+        version: { type: integer, format: int64, minimum: 1 }
+        auto_limit_minor: { type: integer, minimum: 0, maximum: 50000 }
+        hard_limit_minor: { type: integer, minimum: 0, maximum: 50000 }
+        approval_ttl_seconds: { type: integer, minimum: 1, maximum: 86400 }
+    SimulatedDecision:
+      type: object
+      required: [outcome, reason]
+      properties:
+        outcome: { type: string, enum: [allow, require_approval, deny] }
+        reason: { type: string }
+    DispatchControlInput:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - connection_id
+            - expected_revision
+          properties:
+            connection_id:
+              type: string
+              format: uuid
+            expected_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+        - type: object
+          additionalProperties: false
+          required:
+            - workload_id
+            - expected_revision
+          properties:
+            workload_id:
+              type: string
+              format: uuid
+            expected_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+        - type: object
+          additionalProperties: false
+          required:
+            - tenant
+            - expected_revision
+          properties:
+            tenant:
+              type: boolean
+              const: true
+              description: Scope comes from the authenticated operator.
+            expected_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+    RefundRequest:
+      type: object
+      additionalProperties: false
+      required: [type, connection_id, resource, parameters]
+      properties:
+        type: { type: string, const: refund.create }
+        connection_id: { type: string, format: uuid }
+        resource:
+          type: object
+          additionalProperties: false
+          required: [payment_id]
+          properties:
+            payment_id:
+              type: string
+              minLength: 1
+              maxLength: 255
+              description: Nonblank connector payment reference, at most 255 UTF-8 bytes.
+        parameters:
+          type: object
+          additionalProperties: false
+          required: [amount_minor, currency]
+          properties:
+            amount_minor: { type: integer, minimum: 1, maximum: 50000 }
+            currency: { type: string, const: USD }
+        metadata:
+          $ref: '#/components/schemas/RefundMetadata'
+    RefundMetadata:
+      type: object
+      maxProperties: 20
+      description: Untrusted display values. Keys and values must be nonblank and at most 64 and 500 UTF-8 bytes respectively.
+      propertyNames: { minLength: 1, maxLength: 64 }
+      additionalProperties: { type: string, minLength: 1, maxLength: 500 }
+    StoredRefundRequest:
+      allOf:
+        - $ref: '#/components/schemas/RefundRequest'
+        - type: object
+          required: [metadata]
+          properties:
+            metadata: { $ref: '#/components/schemas/RefundMetadata' }
+    ActionStatus:
+      type: string
+      enum: [received, denied, pending_approval, ready, rejected, expired, cancelled, dispatching, succeeded, failed_confirmed]
+    Action:
+      type: object
+      required: [id, status, request, reason]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ActionStatus' }
+        request: { $ref: '#/components/schemas/StoredRefundRequest' }
+        reason: { type: [string, 'null'] }
+    SubmittedAction:
+      allOf:
+        - $ref: '#/components/schemas/Action'
+        - type: object
+          required: [status_url]
+          properties:
+            status_url: { type: string, description: Relative URL for reading the action. }
+    AuditEvent:
+      type: object
+      required: [sequence, event_type]
+      properties:
+        sequence: { type: integer, format: int64 }
+        event_type: { type: string }
+    Approval:
+      type: object
+      required: [action_id, connection_id, generation, policy_version, action_digest, expires_at, queued_at, request]
+      properties:
+        action_id: { type: string, format: uuid }
+        connection_id: { type: string, format: uuid }
+        generation: { type: integer, format: int64, minimum: 1 }
+        policy_version: { type: integer, format: int64, minimum: 1 }
+        action_digest: { type: string, pattern: '^[0-9a-f]{64}$' }
+        expires_at: { type: string, format: date-time }
+        queued_at: { type: [string, "null"], format: date-time, description: Recorded creation of this approval generation; null for legacy records with unknown age. }
+        request: { $ref: '#/components/schemas/StoredRefundRequest' }
+    ApprovalInput:
+      type: object
+      additionalProperties: false
+      required: [generation, action_digest, decision]
+      properties:
+        generation: { type: integer, format: int64, description: Echo the pending item's generation. }
+        action_digest: { type: string, description: Echo the pending item's action digest. }
+        decision: { type: string, enum: [approve, reject] }
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code]
+          properties:
+            code:
+              type: string
+              enum: [unauthorized, not_found, invalid_request, invalid_idempotency_key, idempotency_conflict, action_not_cancellable, approval_conflict, policy_conflict, control_conflict, admin_conflict, result_too_large, unavailable, internal_error]
+    DetailHistoryKind:
+      type: string
+      enum:
+        - audit
+        - policy
+        - approval
+        - budget
+        - attempt
+    DetailPolicyRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - audit_sequence
+        - policy_version
+        - outcome
+        - reason_code
+      properties:
+        audit_sequence:
+          type: integer
+          format: int64
+        policy_version:
+          anyOf:
+            - type: integer
+              format: int64
+            - type: 'null'
+        outcome:
+          type: string
+          enum:
+            - allow
+            - deny
+            - require_approval
+            - expired
+            - approved
+            - rejected
+        reason_code:
+          type: string
+    DetailApproval:
+      type: object
+      additionalProperties: false
+      required:
+        - generation
+        - policy_version
+        - action_digest
+        - queued_at
+        - expires_at
+        - reviewer_id
+        - decision
+        - decided_at
+        - payment_attestation_id
+      properties:
+        generation:
+          type: integer
+          format: int64
+        policy_version:
+          type: integer
+          format: int64
+        action_digest:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        queued_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        expires_at:
+          type: string
+          format: date-time
+        reviewer_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        decision:
+          anyOf:
+            - type: string
+              enum:
+                - approve
+                - reject
+            - type: 'null'
+        decided_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        payment_attestation_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+    DetailPaymentContext:
+      type: object
+      additionalProperties: false
+      required:
+        - payment_id
+        - connection_id
+        - amount_minor
+        - currency
+        - observed_at
+        - fresh_until
+      properties:
+        payment_id:
+          type: string
+          maxLength: 255
+        connection_id:
+          type: string
+          format: uuid
+        amount_minor:
+          type: integer
+          minimum: 1
+          maximum: 50000
+        currency:
+          type: string
+          const: USD
+        observed_at:
+          type: string
+          format: date-time
+        fresh_until:
+          type: string
+          format: date-time
+    DetailBudget:
+      type: object
+      additionalProperties: false
+      required:
+        - state
+        - amount_minor
+        - currency
+        - utc_day
+        - reserved_at
+        - settled_or_released_at
+      properties:
+        state:
+          type: string
+          enum:
+            - held
+            - settled
+            - released
+        amount_minor:
+          type: integer
+          format: int64
+        currency:
+          type: string
+          const: USD
+        utc_day:
+          type: string
+          format: date
+        reserved_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        settled_or_released_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+    DetailExecution:
+      type: object
+      additionalProperties: false
+      required:
+        - state
+        - first_send_at
+        - retry_until
+        - state_changed_at
+        - abandoned_at
+      properties:
+        state:
+          type: string
+          enum:
+            - authorized
+            - in_flight
+            - pending
+            - unknown
+            - manual_review
+            - succeeded
+            - failed_confirmed
+        first_send_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        retry_until:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        state_changed_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        abandoned_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+    ActionDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - schema_version
+        - observed_at
+        - id
+        - workload_id
+        - connection_id
+        - status
+        - created_at
+        - terminal_at
+        - immutable_request
+        - policy
+        - approval
+        - decision_eligibility
+        - authoritative_payment
+        - budget
+        - execution
+        - provider_outcome
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        observed_at:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        workload_id:
+          type: string
+          format: uuid
+        connection_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ActionStatus'
+        created_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        terminal_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        immutable_request:
+          type: object
+          additionalProperties: false
+          required:
+            - type
+            - resource
+            - parameters
+          properties:
+            type:
+              type: string
+              const: refund.create
+            resource:
+              type: object
+              additionalProperties: false
+              required:
+                - payment_id
+              properties:
+                payment_id:
+                  type: string
+                  maxLength: 255
+            parameters:
+              type: object
+              additionalProperties: false
+              required:
+                - amount_minor
+                - currency
+              properties:
+                amount_minor:
+                  type: integer
+                  minimum: 1
+                  maximum: 50000
+                currency:
+                  type: string
+                  const: USD
+        policy:
+          type: object
+          additionalProperties: false
+          required:
+            - latest
+          properties:
+            latest:
+              anyOf:
+                - $ref: '#/components/schemas/DetailPolicyRecord'
+                - type: 'null'
+        approval:
+          anyOf:
+            - $ref: '#/components/schemas/DetailApproval'
+            - type: 'null'
+        decision_eligibility:
+          type: object
+          additionalProperties: false
+          required:
+            - can_decide
+            - reason_code
+          properties:
+            can_decide:
+              type: boolean
+            reason_code:
+              type: string
+        authoritative_payment:
+          type: object
+          additionalProperties: false
+          required:
+            - availability
+            - context
+            - payment
+          properties:
+            availability:
+              type: string
+              enum:
+                - verified_payment
+                - verified_context
+                - unavailable
+            context:
+              anyOf:
+                - $ref: '#/components/schemas/DetailPaymentContext'
+                - type: 'null'
+            payment:
+              anyOf:
+                - $ref: '#/components/schemas/PaymentAttestationView'
+                - type: 'null'
+        budget:
+          anyOf:
+            - $ref: '#/components/schemas/DetailBudget'
+            - type: 'null'
+        execution:
+          anyOf:
+            - $ref: '#/components/schemas/DetailExecution'
+            - type: 'null'
+        provider_outcome:
+          type: object
+          additionalProperties: false
+          required:
+            - status
+            - source
+          properties:
+            status:
+              type: string
+              enum:
+                - not_recorded
+                - unresolved
+                - confirmed_success
+                - confirmed_non_execution
+            source:
+              type: string
+              enum:
+                - none
+                - external_dispatch
+                - local_fixture
+    ActionHistoryItem:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - sequence
+            - event_type
+            - recorded_at
+          properties:
+            kind:
+              type: string
+              const: audit
+            sequence:
+              type: integer
+              format: int64
+            event_type:
+              type: string
+            recorded_at:
+              anyOf:
+                - type: string
+                  format: date-time
+                - type: 'null'
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - audit_sequence
+            - policy_version
+            - outcome
+            - reason_code
+            - evaluated_at
+          properties:
+            kind:
+              type: string
+              const: policy
+            audit_sequence:
+              type: integer
+              format: int64
+            policy_version:
+              anyOf:
+                - type: integer
+                  format: int64
+                - type: 'null'
+            outcome:
+              type: string
+              enum:
+                - allow
+                - deny
+                - require_approval
+                - expired
+                - approved
+                - rejected
+            reason_code:
+              type: string
+            evaluated_at:
+              type: string
+              format: date-time
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - generation
+            - policy_version
+            - action_digest
+            - queued_at
+            - expires_at
+            - reviewer_id
+            - decision
+            - decided_at
+            - payment_attestation_id
+          properties:
+            kind:
+              type: string
+              const: approval
+            generation:
+              type: integer
+              format: int64
+            policy_version:
+              type: integer
+              format: int64
+            action_digest:
+              type: string
+              pattern: ^[0-9a-f]{64}$
+            queued_at:
+              anyOf:
+                - type: string
+                  format: date-time
+                - type: 'null'
+            expires_at:
+              type: string
+              format: date-time
+            reviewer_id:
+              anyOf:
+                - type: string
+                  format: uuid
+                - type: 'null'
+            decision:
+              anyOf:
+                - type: string
+                  enum:
+                    - approve
+                    - reject
+                - type: 'null'
+            decided_at:
+              anyOf:
+                - type: string
+                  format: date-time
+                - type: 'null'
+            payment_attestation_id:
+              anyOf:
+                - type: string
+                  format: uuid
+                - type: 'null'
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - sequence
+            - event_kind
+            - recorded_at
+          properties:
+            kind:
+              type: string
+              const: budget
+            sequence:
+              type: integer
+              format: int64
+            event_kind:
+              type: string
+            recorded_at:
+              type: string
+              format: date-time
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - generation
+            - recorded_at
+          properties:
+            kind:
+              type: string
+              const: attempt
+            generation:
+              type: integer
+              format: int64
+            recorded_at:
+              type: string
+              format: date-time
+      discriminator:
+        propertyName: kind
+    ActionHistoryPage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - next_cursor
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ActionHistoryItem'
+        next_cursor:
+          anyOf:
+            - type: string
+              maxLength: 1024
+            - type: 'null'
+    PaymentAttestationView:
+      type: object
+      additionalProperties: false
+      required:
+        - attestation_id
+        - schema_version
+        - source
+        - approval_generation
+        - payment_id
+        - connection_id
+        - requested_minor
+        - charge_amount_minor
+        - captured_minor
+        - refunded_minor
+        - remaining_minor
+        - currency
+        - status
+        - captured
+        - paid
+        - disputed
+        - method
+        - direct_charge
+        - eligible_at_observation
+        - observed_at
+        - fresh_until
+        - freshness
+      properties:
+        attestation_id:
+          type: string
+          format: uuid
+        schema_version:
+          type: integer
+          const: 1
+        source:
+          type: string
+          enum:
+            - approval
+            - dispatch
+        approval_generation:
+          anyOf:
+            - type: integer
+              format: int64
+              minimum: 1
+            - type: 'null'
+        payment_id:
+          type: string
+          maxLength: 255
+        connection_id:
+          type: string
+          format: uuid
+        requested_minor:
+          type: integer
+          minimum: 1
+          maximum: 50000
+        charge_amount_minor:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        captured_minor:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        refunded_minor:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        remaining_minor:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        currency:
+          type: string
+          const: USD
+        status:
+          type: string
+          const: succeeded
+        captured:
+          type: boolean
+        paid:
+          type: boolean
+        disputed:
+          type: boolean
+        method:
+          type: string
+          const: card
+        direct_charge:
+          type: boolean
+        eligible_at_observation:
+          type: boolean
+        observed_at:
+          type: string
+          format: date-time
+        fresh_until:
+          type: string
+          format: date-time
+        freshness:
+          type: string
+          enum:
+            - fresh
+            - stale
+    ConsolePolicyVersion:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - auto_limit_minor
+        - hard_limit_minor
+        - approval_ttl_seconds
+      properties:
+        version:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9007199254740991
+        auto_limit_minor:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 50000
+        hard_limit_minor:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 50000
+        approval_ttl_seconds:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 86400
+    PolicyPage:
+      type: object
+      additionalProperties: false
+      required:
+        - connection_id
+        - active_policy
+        - versions
+        - next_after
+        - can_edit
+        - can_publish
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+        active_policy:
+          anyOf:
+            - $ref: '#/components/schemas/ConsolePolicyVersion'
+            - type: 'null'
+        versions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ConsolePolicyVersion'
+        next_after:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 9007199254740991
+        can_edit:
+          type: boolean
+        can_publish:
+          type: boolean
+    AdminEntityKind:
+      type: string
+      enum:
+        - connections
+        - workloads
+        - reviewers
+    AdminGrantKind:
+      type: string
+      enum:
+        - workload
+        - approval
+        - reconciliation
+        - policy_admin
+        - evidence_export
+        - operations
+        - action_detail
+        - tenant_dispatch
+        - workload_dispatch
+        - environment_admin
+    AdminGrantPermission:
+      type: string
+      enum:
+        - submit_refund
+        - read_action
+        - read_events
+        - cancel_action
+        - approve
+        - reconcile
+        - edit_policy
+        - publish_policy
+        - control_dispatch
+        - export_evidence
+        - read_operations
+        - read_action_detail
+        - control_tenant_dispatch
+        - control_workload_dispatch
+        - administer_environment
+    AdminEntity:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - enabled
+            - admin_revision
+            - paused
+            - can_control
+            - mode
+            - credential_health
+            - last_payment_verified_at
+          properties:
+            kind:
+              type: string
+              const: connections
+            id:
+              type: string
+              format: uuid
+            enabled:
+              type: boolean
+            admin_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            paused:
+              type: boolean
+            can_control:
+              type: boolean
+            mode:
+              type: string
+              enum:
+                - local_fake
+                - stripe_sandbox
+                - external_configured
+            credential_health:
+              type: string
+              const: unobserved
+            last_payment_verified_at:
+              anyOf:
+                - type: string
+                  format: date-time
+                - type: 'null'
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - enabled
+            - admin_revision
+            - paused
+            - can_control
+          properties:
+            kind:
+              type: string
+              const: workloads
+            id:
+              type: string
+              format: uuid
+            enabled:
+              type: boolean
+            admin_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+            paused:
+              type: boolean
+            can_control:
+              type: boolean
+        - type: object
+          additionalProperties: false
+          required:
+            - kind
+            - id
+            - enabled
+            - admin_revision
+          properties:
+            kind:
+              type: string
+              const: reviewers
+            id:
+              type: string
+              format: uuid
+            enabled:
+              type: boolean
+            admin_revision:
+              type: integer
+              minimum: 1
+              maximum: 9007199254740991
+      discriminator:
+        propertyName: kind
+    AdminEntityPage:
+      type: object
+      additionalProperties: false
+      required:
+        - tenant_id
+        - environment_id
+        - kind
+        - items
+        - next_after
+        - tenant_paused
+        - can_control_tenant
+      properties:
+        tenant_id:
+          type: string
+          format: uuid
+        environment_id:
+          type: string
+          format: uuid
+        kind:
+          $ref: '#/components/schemas/AdminEntityKind'
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AdminEntity'
+        next_after:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        tenant_paused:
+          type: boolean
+        can_control_tenant:
+          type: boolean
+    AdminGrant:
+      type: object
+      additionalProperties: false
+      required:
+        - connection_id
+        - workload_id
+        - reviewer_id
+        - enabled
+        - admin_revision
+        - permissions
+      properties:
+        connection_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        workload_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        reviewer_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        enabled:
+          type: boolean
+        admin_revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        permissions:
+          type: array
+          maxItems: 15
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AdminGrantPermission'
+    AdminGrantPage:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - items
+        - next_after
+        - tenant_id
+        - environment_id
+      properties:
+        kind:
+          $ref: '#/components/schemas/AdminGrantKind'
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AdminGrant'
+        next_after:
+          anyOf:
+            - type: string
+              maxLength: 1024
+            - type: 'null'
+        tenant_id:
+          type: string
+          format: uuid
+        environment_id:
+          type: string
+          format: uuid
+    AdminEnabledInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expected_revision
+        - enabled
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740990
+        enabled:
+          type: boolean
+    AdminRevokeInput:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - expected_revision
+      properties:
+        kind:
+          $ref: '#/components/schemas/AdminGrantKind'
+        expected_revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740990
+        connection_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        workload_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        reviewer_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+    AdminRevisionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+    ControlState:
+      type: object
+      additionalProperties: false
+      required:
+        - kind
+        - target_id
+        - tenant_id
+        - environment_id
+        - enabled
+        - paused
+        - revision
+      properties:
+        kind:
+          type: string
+          enum:
+            - tenant
+            - connection
+            - workload
+        target_id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        environment_id:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        paused:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991

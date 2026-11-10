@@ -1,0 +1,27 @@
+{
+  "name": "apl-reviewer-console",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "api:generate": "openapi-typescript openapi.yaml -o src/api.generated.ts",
+    "api:check": "openapi-typescript openapi.yaml -o src/api.generated.ts --check"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "openapi-typescript": "7.10.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.6"
+  }
+}
