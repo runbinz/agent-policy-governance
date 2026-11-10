@@ -1,0 +1,11 @@
+# Searchable retention, first increment
+
+Additive visibility only; no physical deletion or archive claims. Forward migration 0022 (0019–0021 frozen). Default 90 days configurable by tenant/environment with validated positive days, using a scoped configuration record; configuration management API remains a later increment. Runtime cannot arbitrarily modify it.
+
+Record new actions.created_at and terminal_at with database-maintained timestamps, legacy creation/terminal timestamps remain unknown. A distinct migration observation timestamp provides conservative90 day grace for legacy terminal rows; never present it as historical creation/termination. Terminal statuses: denied,rejected,expired,cancelled,failed_confirmed,succeeded. Active/nonterminal actions always visible regardless of age. Never hide unresolved external outcomes or held exposure, even if malformed terminal action state exists. Retention anchored to terminal time (legacy observation if unavailable), not submission time. Use consistent SQL time and exact inclusive age cutoff contract; document boundary.
+
+Central scoped predicate must cover evidence search including selected IDs, request_evidence_export selection, and worker snapshot validation/preflight. Existing exports already materialized keep their one-hour download lifetime and fenced cleanup. A queued export crossing retention boundary fails closed using existing safe error/state path. Preserve authentication/grants/RLS and lock ordering.
+
+Never delete submission keys/actions/audit/ledger/provider/webhook/idempotency records. Scoped submission keys remain reserved indefinitely: same request replay returns original action, changed request conflicts, no second dispatch. REST/MCP behavior unchanged. Physical archive/expiry requires separate contract/migration.
+
+Backend agent owns migration 0022 and dedicated persistence retention integration test only. Coordinator owns runtime grants/shared config/contracts/ADR and integration. Agent must report proposed function signatures before adding new runtime grants. Test actual runtime roles, exact cutoff/legacy grace/active/unresolved/held visibility, scope isolation, selected-ID/export bypass, expiry crossing and replay preservation. Use owned disposable DB; do not modify shared fixture ages.

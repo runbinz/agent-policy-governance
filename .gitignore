@@ -1,0 +1,6 @@
+/target/
+/.local/
+/.env
+*.log
+/apps/console/node_modules/
+/apps/console/dist/

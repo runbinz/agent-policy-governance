@@ -1,0 +1,110 @@
+# Provisional engineering thresholds. Evaluation only; no delivery or execution controls.
+groups:
+  -
+    name: "apl-provisional"
+    interval: "1m"
+    rules:
+      -
+        alert: "APLBusinessCollectorDown"
+        expr: "(min(apl_business_collector_up) < 1) or absent(apl_business_collector_up)"
+        for: "2m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Business metrics collector is failing or absent."
+      -
+        alert: "APLBusinessSnapshotStale"
+        expr: "(time() - max(apl_business_sample_timestamp_seconds) > 120) or absent(apl_business_sample_timestamp_seconds)"
+        for: "2m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Business metrics snapshot is older than 120 seconds or absent."
+      -
+        alert: "APLUnresolvedBacklogAge"
+        expr: "(max(apl_oldest_unresolved_age_seconds) > 900) and ((max(apl_unknown_outcomes) > 0) or (max(apl_manual_review) > 0))"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Unknown or manual-review backlog exceeds 15 minutes."
+      -
+        alert: "APLApprovalBacklogAge"
+        expr: "(max(apl_oldest_approval_age_seconds) > 3600) and (max(apl_pending_approvals) > 0)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Pending approval backlog exceeds one hour."
+      -
+        alert: "APLReadyQueueLag"
+        expr: "(max(apl_oldest_ready_lag_seconds) > 120) and (max(apl_ready_jobs) > 0)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Ready dispatch queue lag exceeds two minutes."
+      -
+        alert: "APLNotificationFailures"
+        expr: "max(apl_notification_failures) > 0"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Terminal notification failures require review."
+      -
+        alert: "APLUnknownAgeRecords"
+        expr: "max(apl_unknown_age_records) > 0"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Backlog records have unknown age; age alerts may be incomplete."
+      -
+        alert: "APLProviderIndeterminateFraction"
+        expr: "(sum(increase(apl_provider_calls_total{operation=~\"context|execute\",outcome=~\"unknown|timeout\"}[5m])) / sum(increase(apl_provider_calls_total{operation=~\"context|execute\"}[5m])) > 0.1) and (sum(increase(apl_provider_calls_total{operation=~\"context|execute\"}[5m])) >= 20)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Context|execute indeterminate outcome fraction exceeds 10 percent with at least 20 calls per five minutes."
+      -
+        alert: "APLReconcileIndeterminateFraction"
+        expr: "(sum(increase(apl_provider_calls_total{operation=~\"reconcile\",outcome=~\"unknown|timeout\"}[5m])) / sum(increase(apl_provider_calls_total{operation=~\"reconcile\"}[5m])) > 0.1) and (sum(increase(apl_provider_calls_total{operation=~\"reconcile\"}[5m])) >= 20)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Reconcile indeterminate outcome fraction exceeds 10 percent with at least 20 calls per five minutes."
+      -
+        alert: "APLInternalDispatchP95"
+        expr: "(histogram_quantile(0.95, sum by (le) (rate(apl_internal_dispatch_duration_seconds_bucket[5m]))) > 0.1) and (sum(increase(apl_internal_dispatch_duration_seconds_count[5m])) >= 20)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Internal dispatch p95 exceeds the provisional 100 ms target."
+      -
+        alert: "APLStaleDispatchLeases"
+        expr: "max(apl_stale_dispatch_leases) > 0"
+        for: "2m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Stale dispatch leases require recovery review."
+      -
+        alert: "APLExternalReadyQueueLag"
+        expr: "(max(apl_oldest_external_ready_lag_seconds) > 300) and (max(apl_ready_external_dispatches) > 0)"
+        for: "5m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "External-ready dispatch lag exceeds five minutes."
+      -
+        alert: "APLTargetDown"
+        expr: "up{job=~\"apl-api|apl-worker\"} == 0"
+        for: "2m"
+        labels:
+          severity: "warning"
+        annotations:
+          summary: "Configured API or worker metrics target is down."

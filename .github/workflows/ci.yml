@@ -1,0 +1,33 @@
+name: Data Governance verification
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: apl_admin
+          POSTGRES_PASSWORD: local_test_only
+          POSTGRES_DB: apl_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U apl_admin -d apl_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.90.0
+        with:
+          components: rustfmt, clippy
+      - run: bash scripts/verify.sh
+        env:
+          TEST_DATABASE_URL: postgres://apl_admin:local_test_only@localhost:5432/apl_test
+      - run: bash scripts/verify-alerts.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/console/package-lock.json
+      - run: npm ci && npm run api:check && npm run build
+        working-directory: apps/console
+      - run: cargo install cargo-audit --version 0.22.2 --locked
+      - run: python3 scripts/verify-dependencies.py
+      - run: bash scripts/verify-secrets.sh --self-test

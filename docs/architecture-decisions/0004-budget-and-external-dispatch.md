@@ -1,0 +1,11 @@
+# ADR 0004: Budget reservations and external dispatch recovery
+
+Status: budget enforced in the simulated worker; the durable external path is verified with a controllable provider fixture. No live provider is connected.
+
+Each connection requires a configured USD daily cap and outstanding exposure cap. A connection's budget row serializes admissions and changes to subordinate workload/customer limits. The ledger derives usage from durable holds and settlements; pending or unknown actions would retain exposure across UTC rollover. Customer budgets may only use an authoritative provider reference. The fake provider does not assert a customer association.
+
+The fake worker holds the job and authorization locks, evaluates policy, reserves budget, rechecks approval expiry at effect insertion, and commits the effect and settlement together. Missing or exhausted budgets deny execution. If approval expires after reservation, the same transaction records that no effect occurred and releases the hold. The integration tests exercise the case where waiting for the budget lock crosses the approval deadline.
+
+External execution uses a separate state model: immutable verified provider request, stable idempotency key, fenced lease, durable pre-send marker, explicit pending/unknown outcomes, and verified terminal evidence. Migration 0006 persists those records. The hold and authorization commit together, and the worker starts network I/O only after the send marker commits. Confirmed outcomes update the action, dispatch state, and ledger in the same later transaction. Timeout, an empty lookup, or lease expiry alone does not release the hold or authorize a new send. After eight inconclusive observations, the job enters manual review and retains its hold.
+
+The PostgreSQL tests cover crashes around the send marker, lease reclaim and stale observations, bounded unknown-outcome recovery, and exactly one terminal ledger update. Before enabling the Stripe adapter in the worker CLI, persist trusted connection/account routing and prevent mixed fake/external workers from claiming the same action. Serialize gateway dispatches for a payment, add a verified manual review resolution path, and test the adapter against an explicit sandbox account before considering live credentials.

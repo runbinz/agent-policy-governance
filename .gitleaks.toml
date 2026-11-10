@@ -1,0 +1,29 @@
+title = "Data Governance working-tree secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated build output, local tools/reports and dependency metadata"
+paths = [
+  '''(^|/)(\.git|\.local|target|node_modules|__pycache__)(/|$)''',
+  '''^apps/console/dist/''',
+]
+
+[[rules]]
+id = "private-key"
+[[rules.allowlists]]
+description = "Public RSA fixture used only by identity JWT tests (see fixture README)"
+condition = "AND"
+paths = ['''^crates/identity/tests/fixtures/test-only-private\.pem$''']
+regexTarget = "match"
+regexes = ['''\A-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDBEPDYCwycumjm\n[A-Za-z0-9+/=\r\n]+-----END PRIVATE KEY-----\z''']
+
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "Implementation status prose falsely recognized as a credential assignment"
+condition = "AND"
+paths = ['''^docs/IMPLEMENTATION\.md$''']
+regexTarget = "match"
+regexes = ['''\Acredentials, expiry/revocation \z''']

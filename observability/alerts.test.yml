@@ -1,0 +1,1041 @@
+rule_files:
+  - "alerts.yml"
+evaluation_interval: "1m"
+tests:
+  -
+    name: "healthy collectors and zero traffic"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up{instance=\"a\"}"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds{instance=\"a\"}"
+        values: "0+60x20"
+      -
+        series: "apl_unknown_outcomes{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_manual_review{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_pending_approvals{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_ready_jobs{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_notification_failures{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_unknown_age_records{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_unresolved_age_seconds{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_approval_age_seconds{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_ready_lag_seconds{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"succeeded\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"unknown\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"timeout\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"failed_confirmed\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"succeeded\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"unknown\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"timeout\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"failed_confirmed\"}"
+        values: "0+0x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"0.1\"}"
+        values: "0+0x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"1\"}"
+        values: "0+0x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"+Inf\"}"
+        values: "0+0x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_count"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "absent collectors alert; absent workload does not imply failure"
+    interval: "1m"
+    input_series: []
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Business metrics collector is failing or absent."
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Business metrics snapshot is older than 120 seconds or absent."
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "sustained breaches fire"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up{instance=\"a\"}"
+        values: "0+0x20"
+      -
+        series: "apl_business_collector_up{instance=\"b\"}"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+0x20"
+      -
+        series: "apl_unknown_outcomes"
+        values: "1+0x20"
+      -
+        series: "apl_manual_review"
+        values: "1+0x20"
+      -
+        series: "apl_pending_approvals"
+        values: "1+0x20"
+      -
+        series: "apl_ready_jobs"
+        values: "1+0x20"
+      -
+        series: "apl_notification_failures"
+        values: "1+0x20"
+      -
+        series: "apl_unknown_age_records"
+        values: "1+0x20"
+      -
+        series: "apl_oldest_unresolved_age_seconds"
+        values: "901+0x20"
+      -
+        series: "apl_oldest_approval_age_seconds"
+        values: "3601+0x20"
+      -
+        series: "apl_oldest_ready_lag_seconds"
+        values: "121+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"unknown\"}"
+        values: "0+10x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"succeeded\"}"
+        values: "0+10x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"unknown\"}"
+        values: "0+10x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"succeeded\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"0.1\"}"
+        values: "0+0x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"1\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"+Inf\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_count"
+        values: "0+10x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Business metrics collector is failing or absent."
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Business metrics snapshot is older than 120 seconds or absent."
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Unknown or manual-review backlog exceeds 15 minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Pending approval backlog exceeds one hour."
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Ready dispatch queue lag exceeds two minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Terminal notification failures require review."
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Backlog records have unknown age; age alerts may be incomplete."
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Context|execute indeterminate outcome fraction exceeds 10 percent with at least 20 calls per five minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Reconcile indeterminate outcome fraction exceeds 10 percent with at least 20 calls per five minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Internal dispatch p95 exceeds the provisional 100 ms target."
+      -
+        eval_time: "4m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "duplicate gauges use max and small indeterminate volume stays quiet"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+60x20"
+      -
+        series: "apl_oldest_unresolved_age_seconds{instance=\"a\"}"
+        values: "600+0x20"
+      -
+        series: "apl_oldest_approval_age_seconds{instance=\"a\"}"
+        values: "2000+0x20"
+      -
+        series: "apl_oldest_ready_lag_seconds{instance=\"a\"}"
+        values: "90+0x20"
+      -
+        series: "apl_unknown_outcomes{instance=\"a\"}"
+        values: "1+0x20"
+      -
+        series: "apl_manual_review{instance=\"a\"}"
+        values: "1+0x20"
+      -
+        series: "apl_pending_approvals{instance=\"a\"}"
+        values: "1+0x20"
+      -
+        series: "apl_ready_jobs{instance=\"a\"}"
+        values: "1+0x20"
+      -
+        series: "apl_oldest_unresolved_age_seconds{instance=\"b\"}"
+        values: "600+0x20"
+      -
+        series: "apl_oldest_approval_age_seconds{instance=\"b\"}"
+        values: "2000+0x20"
+      -
+        series: "apl_oldest_ready_lag_seconds{instance=\"b\"}"
+        values: "90+0x20"
+      -
+        series: "apl_unknown_outcomes{instance=\"b\"}"
+        values: "1+0x20"
+      -
+        series: "apl_manual_review{instance=\"b\"}"
+        values: "1+0x20"
+      -
+        series: "apl_pending_approvals{instance=\"b\"}"
+        values: "1+0x20"
+      -
+        series: "apl_ready_jobs{instance=\"b\"}"
+        values: "1+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"timeout\"}"
+        values: "0+1x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"timeout\"}"
+        values: "0+1x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "healthy positive traffic including confirmed business failures"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+60x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"unknown\"}"
+        values: "0+1x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"timeout\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"failed_confirmed\"}"
+        values: "0+20x20"
+      -
+        series: "apl_provider_calls_total{operation=\"execute\",outcome=\"succeeded\"}"
+        values: "0+20x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"unknown\"}"
+        values: "0+1x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"timeout\"}"
+        values: "0+0x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"failed_confirmed\"}"
+        values: "0+20x20"
+      -
+        series: "apl_provider_calls_total{operation=\"reconcile\",outcome=\"succeeded\"}"
+        values: "0+20x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"0.1\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"1\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_bucket{le=\"+Inf\"}"
+        values: "0+10x20"
+      -
+        series: "apl_internal_dispatch_duration_seconds_count"
+        values: "0+10x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "context unknown 0+10x20: provider alert True"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+60x20"
+      -
+        series: "apl_provider_calls_total{operation=\"context\",outcome=\"unknown\"}"
+        values: "0+10x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Context|execute indeterminate outcome fraction exceeds 10 percent with at least 20 calls per five minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "context ineligible 0+20x20: provider alert False"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+60x20"
+      -
+        series: "apl_provider_calls_total{operation=\"context\",outcome=\"ineligible\"}"
+        values: "0+20x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "context unknown 0+1x20: provider alert False"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_business_collector_up"
+        values: "1+0x20"
+      -
+        series: "apl_business_sample_timestamp_seconds"
+        values: "0+60x20"
+      -
+        series: "apl_provider_calls_total{operation=\"context\",outcome=\"unknown\"}"
+        values: "0+1x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessCollectorDown"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLBusinessSnapshotStale"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnresolvedBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLApprovalBacklogAge"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLNotificationFailures"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLUnknownAgeRecords"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLProviderIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLReconcileIndeterminateFraction"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLInternalDispatchP95"
+        exp_alerts: []
+  -
+    name: "healthy active dispatch"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_stale_dispatch_leases{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_stale_dispatch_leases{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-worker\",instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"unrelated\",instance=\"elsewhere\"}"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+  -
+    name: "exact external lag threshold"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_stale_dispatch_leases{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"api:9100\"}"
+        values: "300+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "apl_stale_dispatch_leases{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"worker:9101\"}"
+        values: "300+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-worker\",instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"unrelated\",instance=\"elsewhere\"}"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+  -
+    name: "duplicate snapshots below lag threshold"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_stale_dispatch_leases{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"api:9100\"}"
+        values: "200+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "apl_stale_dispatch_leases{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"worker:9101\"}"
+        values: "200+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-worker\",instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"unrelated\",instance=\"elsewhere\"}"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+  -
+    name: "sustained crash and backlog"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_stale_dispatch_leases{instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"api:9100\"}"
+        values: "301+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "apl_stale_dispatch_leases{instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"worker:9101\"}"
+        values: "301+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-worker\",instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "up{job=\"unrelated\",instance=\"elsewhere\"}"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "Stale dispatch leases require recovery review."
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+            exp_annotations:
+              summary: "External-ready dispatch lag exceeds five minutes."
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts:
+          -
+            exp_labels:
+              severity: "warning"
+              job: "apl-worker"
+              instance: "worker:9101"
+            exp_annotations:
+              summary: "Configured API or worker metrics target is down."
+      -
+        eval_time: "1m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+      -
+        eval_time: "4m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+  -
+    name: "old age without ready backlog"
+    interval: "1m"
+    input_series:
+      -
+        series: "apl_stale_dispatch_leases{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"api:9100\"}"
+        values: "301+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"api:9100\"}"
+        values: "0+0x20"
+      -
+        series: "apl_stale_dispatch_leases{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "apl_oldest_external_ready_lag_seconds{instance=\"worker:9101\"}"
+        values: "301+0x20"
+      -
+        series: "apl_ready_external_dispatches{instance=\"worker:9101\"}"
+        values: "0+0x20"
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"apl-worker\",instance=\"worker:9101\"}"
+        values: "1+0x20"
+      -
+        series: "up{job=\"unrelated\",instance=\"elsewhere\"}"
+        values: "0+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "1m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+  -
+    name: "removed worker target remains absent while API is healthy"
+    input_series:
+      -
+        series: "up{job=\"apl-api\",instance=\"api:9100\"}"
+        values: "1+0x20"
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []
+  -
+    name: "no configured target series cannot identify missing target inventory"
+    input_series: []
+    alert_rule_test:
+      -
+        eval_time: "12m"
+        alertname: "APLStaleDispatchLeases"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLExternalReadyQueueLag"
+        exp_alerts: []
+      -
+        eval_time: "12m"
+        alertname: "APLTargetDown"
+        exp_alerts: []

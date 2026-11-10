@@ -1,0 +1,9 @@
+# ADR 0011: Scoped operations and bounded HTTP telemetry
+
+Operations snapshots require a separate current connection-scoped grant. Approval, evidence and pause authority do not imply access. The read-only endpoint returns aggregate budgets, current approval/provider states, ready queue lag, failures and pause state; it excludes request bodies, payment/customer references, provider keys and routing. Read within one statement snapshot, hold authorization locks, bound database time and recheck authentication after I/O. Server faults remain server errors with sanitized diagnostic classes.
+
+New approvals record creation time and new/changed dispatch states record state-entry time. Existing rows retain unknown timestamps; no historical timestamp is fabricated. State age is time in the current unresolved state, not time since the original provider call. Unknown-age counts remain visible. Queue lag uses the persisted available time, and budget totals come from authoritative reservations with UTC-day boundaries.
+
+Optional `/metrics` exposes process-local HTTP counters and latency histograms behind a dedicated scrape bearer secret. It uses route templates, bounded method/status classes and a bounded route registry, never raw URI/query, credentials or identity labels. Scrapes do not measure themselves. Generated trace UUIDs correlate response headers, completion logs and nested errors; action admission logs add the server-known action UUID. Raw persistence Display/Debug details are replaced with bounded error classes.
+
+Keep scraping on private management ingress. Each replica has its own counters; aggregate them in the monitoring system. HTTP metrics and scoped operational snapshots do not complete the plan's worker/provider latency, decision-reason, reconciliation-failure and provider-error instrumentation requirements. Those remain explicit follow-up work, along with deployed alerting and measured load targets.
