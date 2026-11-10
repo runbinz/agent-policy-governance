@@ -1,0 +1,25 @@
+[package]
+name = "apl-worker"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+apl-observability = { path = "../observability" }
+apl-telemetry = { path = "../telemetry" }
+axum.workspace = true
+zeroize = "1"
+apl-notifications = { path = "../notifications" }
+apl-evidence = { path = "../evidence" }
+apl-dispatch = { path = "../dispatch" }
+apl-persistence = { path = "../persistence" }
+apl-stripe-sandbox = { path = "../stripe-sandbox" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tower.workspace = true
+apl-domain = { path = "../domain" }
+sqlx.workspace = true

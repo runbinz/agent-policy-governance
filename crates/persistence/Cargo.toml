@@ -1,0 +1,19 @@
+[package]
+name = "apl-persistence"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+apl-domain = { path = "../domain" }
+apl-dispatch = { path = "../dispatch" }
+apl-ledger = { path = "../ledger" }
+sqlx.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+url = "2"
+tokio.workspace = true

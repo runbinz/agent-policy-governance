@@ -1,0 +1,23 @@
+[package]
+name = "apl-evidence"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+aes-gcm = { version = "=0.10.3", features = ["zeroize"] }
+aes = { version = "0.8", features = ["zeroize"] }
+object_store = { version = "=0.14.2", features = ["aws"] }
+zeroize = "1"
+futures-util = "0.3"
+base64.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { workspace = true, features = ["test-util"] }

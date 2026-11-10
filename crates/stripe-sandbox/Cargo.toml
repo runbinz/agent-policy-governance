@@ -1,0 +1,17 @@
+[package]
+name = "apl-stripe-sandbox"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+apl-dispatch = { path = "../dispatch" }
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls", "json"] }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+tokio.workspace = true

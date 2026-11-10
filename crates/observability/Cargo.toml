@@ -1,0 +1,16 @@
+[package]
+name = "apl-observability"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+apl-persistence = { path = "../persistence" }
+apl-telemetry = { path = "../telemetry" }
+tokio.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+axum.workspace = true
+tower.workspace = true

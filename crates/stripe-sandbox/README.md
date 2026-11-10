@@ -1,0 +1,9 @@
+# Stripe sandbox adapter
+
+This adapter accepts Stripe test secrets (`sk_test_` or `rk_test_`) and verifies the configured account before use. It only calls `https://api.stripe.com`, uses API version `2026-10-28.endive`, and does not follow redirects, use environment proxies, or replay requests automatically. It cannot select a Connect account from request data.
+
+Verification supports paid, captured, undisputed, direct USD card Charges with enough remaining captured value. The exact Charge is read under the trusted account, and its optional customer ID supplies the customer budget scope. Stripe Refund objects do not have a documented `livemode` attribute, so execution and reconciliation confirm the same Charge is in test mode and reject a Refund that explicitly claims live mode. [Charge object](https://docs.stripe.com/api/charges/object) · [Refund object](https://docs.stripe.com/api/refunds/object)
+
+The worker must persist the budget hold and send marker before invoking `execute`. The create request sends the stable provider key as both the idempotency header and the reserved `apl_refund_key` metadata field. Reconciliation reads up to five pages of refunds for the exact Charge. It returns unknown on no match, multiple matches, an incomplete scan, or any transport or correlation error. An authenticated, exactly correlated terminal Refund is required to confirm success or non-execution. The evidence reference points to the Stripe account and Refund, and the worker persists it with the outcome. [Create refund](https://docs.stripe.com/api/refunds/create) · [List refunds](https://docs.stripe.com/api/refunds/list)
+
+`cargo test -p apl-stripe-sandbox` uses a loopback mock server only. It never needs a Stripe credential and does not establish compatibility with a connected sandbox account.

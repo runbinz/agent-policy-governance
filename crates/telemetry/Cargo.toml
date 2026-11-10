@@ -1,0 +1,16 @@
+[package]
+name = "apl-telemetry"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+axum.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+sha2.workspace = true
+subtle = "2"
+
+[dev-dependencies]
+tokio.workspace = true
+tower.workspace = true
